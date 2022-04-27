@@ -107,6 +107,8 @@ func cutLines(filePath, tempFilePath string, keyPhrases []string) (retErr error)
 	return nil
 }
 
+// TODO clean up code when all done
+
 // check if any of `keyPhrases`` are in `line`
 // TODO might be best to compile the keyphrases to a regex then check against that.
 // i'll need to benchmark to see which is best
