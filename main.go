@@ -15,20 +15,32 @@ func main() {
 	inPlace := flag.Bool("inplace", false, "edit the file (don't create a copy)")
 	flag.Parse()
 
-	keyPhrases := splitKeys(*keys)
-	fmt.Printf("Trimming file '%s' of lines with key phrases: %#v\n", *filePath, keyPhrases)
-	fmt.Printf("in place: %t\n", *inPlace)
+	if *filePath == "" || *keys == "" {
+		helpAndExit()
+	}
+	keyPhrases := strings.Split(*keys, "|")
+
+	log.Printf("Trimming file %q of lines with key phrases: %#v (in place: %t)\n", *filePath, keyPhrases, *inPlace)
 
 	if err := cut(*filePath, keyPhrases, *inPlace); err != nil {
 		log.Fatalf("failed to cut lines: %s", err)
 	}
 }
 
-func splitKeys(keys string) []string {
-	if keys == "" {
-		return []string{}
-	}
-	return strings.Split(keys, "|")
+// pretty print tool instructions, then exit the program.
+// use fmt package to avoid log prefixes in the message.
+func helpAndExit() {
+	fmt.Println(`Line remover tool help:
+
+Supply a -file to tell the program which file to modify (relative paths work).
+
+Supply the -keys to search for. If a line in the -file contains at least
+one of these, it will be removed. Multiple keys may be separated by a '|'.
+
+Optionally, set -inplace=true to perform the operation in-place (edit
+the provided -file rather than creating a new one).`)
+
+	os.Exit(1)
 }
 
 // generate the file path for the temporary file
@@ -45,7 +57,9 @@ func getOutputFilePath(filePath string, inPlace bool) string {
 	return getTempFilePath(filePath)
 }
 
-// check if any of <keyPhrases> are in <line>
+// check if any of `keyPhrases`` are in `line`
+// TODO might be best to compile the keyphrases to a regex then check against that.
+// i'll need to benchmark to see which is best
 func substrInLine(line string, keyPhrases []string) bool {
 	for _, keyPhrase := range keyPhrases {
 		if strings.Contains(line, keyPhrase) {
@@ -66,16 +80,16 @@ func cutLines(filePath, tempFilePath string, keyPhrases []string) error {
 
 	outFile, err := os.Create(tempFilePath)
 	if err != nil {
-		log.Fatalf("failed opening output file: %s", err)
+		log.Fatalf("failed creating output file: %s", err)
 	}
+	defer outFile.Close()
 
 	scanner := bufio.NewScanner(sourceFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if !substrInLine(line, keyPhrases) {
 			// TODO use bufio?
-			_, err := outFile.WriteString(line + "\n")
-			if err != nil {
+			if _, err := outFile.WriteString(line + "\n"); err != nil {
 				outFile.Close()
 				return err
 			}
@@ -87,6 +101,7 @@ func cutLines(filePath, tempFilePath string, keyPhrases []string) error {
 
 func cut(filePath string, keyPhrases []string, inplace bool) error {
 	tempFilePath := getTempFilePath(filePath)
+
 	err := cutLines(filePath, tempFilePath, keyPhrases)
 	if err != nil {
 		os.Remove(tempFilePath)
@@ -94,7 +109,7 @@ func cut(filePath string, keyPhrases []string, inplace bool) error {
 	}
 
 	if inplace {
-		// overwrite og file with temp file, return error if needed
+		// TODO overwrite og file with temp file, return error if needed
 		return nil
 	}
 
