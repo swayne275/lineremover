@@ -78,25 +78,26 @@ func cutLines(filePath, tempFilePath string, keyPhrases []string) error {
 	}
 	defer sourceFile.Close()
 
-	outFile, err := os.Create(tempFilePath)
+	outFile, err := os.OpenFile(tempFilePath, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Fatalf("failed creating output file: %s", err)
 	}
 	defer outFile.Close()
+	bw := bufio.NewWriter(outFile)
+	defer bw.Flush()
 
 	first := true
 	scanner := bufio.NewScanner(sourceFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if !substrInLine(line, keyPhrases) {
-			// TODO use bufio?
 			b := strings.Builder{}
 			if !first {
 				b.WriteString("\n")
 			}
 			b.WriteString(line)
-			if _, err := outFile.WriteString(b.String()); err != nil {
-				outFile.Close()
+			if _, err := bw.WriteString(b.String()); err != nil {
+				log.Println("Error writing string to buffered output:", err)
 				return err
 			}
 
@@ -106,7 +107,7 @@ func cutLines(filePath, tempFilePath string, keyPhrases []string) error {
 
 	// TODO use named return param so that defer can be like "if retErr != nil { retErr = outFile.Close() }"
 	// but close either way
-	return outFile.Close()
+	return nil
 }
 
 func cut(filePath string, keyPhrases []string, inplace bool) error {
