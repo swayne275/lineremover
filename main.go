@@ -84,18 +84,28 @@ func cutLines(filePath, tempFilePath string, keyPhrases []string) error {
 	}
 	defer outFile.Close()
 
+	first := true
 	scanner := bufio.NewScanner(sourceFile)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if !substrInLine(line, keyPhrases) {
 			// TODO use bufio?
-			if _, err := outFile.WriteString(line + "\n"); err != nil {
+			b := strings.Builder{}
+			if !first {
+				b.WriteString("\n")
+			}
+			b.WriteString(line)
+			if _, err := outFile.WriteString(b.String()); err != nil {
 				outFile.Close()
 				return err
 			}
+
+			first = false
 		}
 	}
 
+	// TODO use named return param so that defer can be like "if retErr != nil { retErr = outFile.Close() }"
+	// but close either way
 	return outFile.Close()
 }
 
@@ -109,8 +119,7 @@ func cut(filePath string, keyPhrases []string, inplace bool) error {
 	}
 
 	if inplace {
-		// TODO overwrite og file with temp file, return error if needed
-		return nil
+		return os.Rename(tempFilePath, filePath)
 	}
 
 	return nil
