@@ -43,35 +43,24 @@ the provided -file rather than creating a new one).`)
 	os.Exit(1)
 }
 
-// generate the file path for the temporary file
-func getTempFilePath(filePath string) string {
-	return filePath + ".tmp"
-}
+func cut(filePath string, keyPhrases []string, inplace bool) error {
+	tempFilePath := getTempFilePath(filePath)
 
-// convenience function to get the final file path
-func getOutputFilePath(filePath string, inPlace bool) string {
-	if inPlace {
-		return filePath
+	err := cutLines(filePath, tempFilePath, keyPhrases)
+	if err != nil {
+		os.Remove(tempFilePath)
+		return err
 	}
 
-	return getTempFilePath(filePath)
-}
-
-// check if any of `keyPhrases`` are in `line`
-// TODO might be best to compile the keyphrases to a regex then check against that.
-// i'll need to benchmark to see which is best
-func substrInLine(line string, keyPhrases []string) bool {
-	for _, keyPhrase := range keyPhrases {
-		if strings.Contains(line, keyPhrase) {
-			return true
-		}
+	if inplace {
+		return os.Rename(tempFilePath, filePath)
 	}
 
-	return false
+	return nil
 }
 
-// generate a temp file that includes all of <filePath> minus lines matching a <keyPhrase>
-func cutLines(filePath, tempFilePath string, keyPhrases []string) error {
+// generate a temp file that includes all of `filePath` minus lines matching a `keyPhrase`
+func cutLines(filePath, tempFilePath string, keyPhrases []string) (retErr error) {
 	sourceFile, err := os.Open(filePath)
 	if err != nil {
 		log.Fatalf("failed opening source file: %s", err)
@@ -82,9 +71,19 @@ func cutLines(filePath, tempFilePath string, keyPhrases []string) error {
 	if err != nil {
 		log.Fatalf("failed creating output file: %s", err)
 	}
-	defer outFile.Close()
+	defer func() {
+		e := outFile.Close()
+		if retErr == nil {
+			retErr = e
+		}
+	}()
 	bw := bufio.NewWriter(outFile)
-	defer bw.Flush()
+	defer func() {
+		e := bw.Flush()
+		if retErr == nil {
+			retErr = e
+		}
+	}()
 
 	first := true
 	scanner := bufio.NewScanner(sourceFile)
@@ -105,23 +104,32 @@ func cutLines(filePath, tempFilePath string, keyPhrases []string) error {
 		}
 	}
 
-	// TODO use named return param so that defer can be like "if retErr != nil { retErr = outFile.Close() }"
-	// but close either way
 	return nil
 }
 
-func cut(filePath string, keyPhrases []string, inplace bool) error {
-	tempFilePath := getTempFilePath(filePath)
-
-	err := cutLines(filePath, tempFilePath, keyPhrases)
-	if err != nil {
-		os.Remove(tempFilePath)
-		return err
+// check if any of `keyPhrases`` are in `line`
+// TODO might be best to compile the keyphrases to a regex then check against that.
+// i'll need to benchmark to see which is best
+func substrInLine(line string, keyPhrases []string) bool {
+	for _, keyPhrase := range keyPhrases {
+		if strings.Contains(line, keyPhrase) {
+			return true
+		}
 	}
 
-	if inplace {
-		return os.Rename(tempFilePath, filePath)
+	return false
+}
+
+// generate the file path for the temporary file
+func getTempFilePath(filePath string) string {
+	return filePath + ".tmp"
+}
+
+// convenience function to get the final file path
+func getOutputFilePath(filePath string, inPlace bool) string {
+	if inPlace {
+		return filePath
 	}
 
-	return nil
+	return getTempFilePath(filePath)
 }
