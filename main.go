@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -112,6 +113,7 @@ func cutLines(filePath, tempFilePath string, keyPhrases []string) (retErr error)
 // check if any of `keyPhrases`` are in `line`
 // TODO might be best to compile the keyphrases to a regex then check against that.
 // i'll need to benchmark to see which is best
+// TODO variadic keyphrases as ...string instead of []string?
 func substrInLine(line string, keyPhrases []string) bool {
 	for _, keyPhrase := range keyPhrases {
 		if strings.Contains(line, keyPhrase) {
@@ -120,6 +122,28 @@ func substrInLine(line string, keyPhrases []string) bool {
 	}
 
 	return false
+}
+
+// TODO this should be reformed to make the regex, then search all lines
+func substrInLineRegex(line string, keyPhrases []string) bool {
+	re, err := buildRegex(keyPhrases)
+	if err != nil {
+		panic(fmt.Sprintf("TODO cleanup error compiling regex: %v", err))
+	}
+
+	return re.MatchString(line)
+}
+
+func buildRegex(keyPhrases []string) (*regexp.Regexp, error) {
+	regexSB := strings.Builder{}
+	for _, keyphrase := range keyPhrases {
+		if regexSB.Len() > 0 {
+			regexSB.WriteRune('|')
+		}
+		regexSB.WriteString(keyphrase)
+	}
+
+	return regexp.Compile(regexSB.String())
 }
 
 // generate the file path for the temporary file
