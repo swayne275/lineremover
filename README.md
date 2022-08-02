@@ -20,3 +20,25 @@ and then run as:
 
 `./lineremover -file=<path/to/file> -keys="<keys to search for|with multiple separated by|pipes>"`
 
+# Examples
+
+The following examples work on `input.txt` in the `examples/` folder.
+
+The following code snipets expect to be executed from the directory containing `main.go`.
+
+Note that `go run main.go` can be replaced with `./lineremover` if you've built a binary
+(called `lineremover`).
+
+They can also be modified by appending `-inplace` if you'd like to overwrite `examples/input.txt`.
+
+## Removing everything prefixed with "hello"
+
+`go run main.go -file="example/input.txt" -keys="hello"`
+
+## Removing everything prefixed with "hello small"
+
+`go run main.go -file="example/input.txt" -keys="hello small"`
+
+## Removing everything containing "world"
+
+`go run main.go -file="example/input.txt" -keys="world"`
