@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func BenchmarkRegexExternal(b *testing.B) {
+func BenchmarkRegex(b *testing.B) {
 	re, err := buildRegex([]string{"hello", "tony", "world"})
 	if err != nil {
 		b.Fatalf("TODO cleanup error compiling regex: %v", err)
