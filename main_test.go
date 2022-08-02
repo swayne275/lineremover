@@ -4,14 +4,6 @@ import (
 	"testing"
 )
 
-func BenchmarkRegex(b *testing.B) {
-	testStr := "hello world"
-	testPhrases := []string{"hello", "tony", "world"}
-	for n := 0; n < b.N; n++ {
-		substrInLineRegex(testStr, testPhrases)
-	}
-}
-
 func BenchmarkRegexExternal(b *testing.B) {
 	re, err := buildRegex([]string{"hello", "tony", "world"})
 	if err != nil {
