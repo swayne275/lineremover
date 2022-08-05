@@ -12,7 +12,7 @@ import (
 func main() {
 	cfg := getUserInput()
 
-	log.Printf("Trimming file %q of lines with key phrases: %#v (in place: %t)\n", cfg.inputPath, cfg.keys, cfg.inplace)
+	log.Printf("Trimming file %q of lines with key phrases: %v (in place: %t)\n", cfg.inputPath, cfg.keys, cfg.inplace)
 
 	if err := transformInput(cfg); err != nil {
 		log.Fatalf("failed to cut lines: %s", err)
