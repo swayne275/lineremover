@@ -44,7 +44,7 @@ func getUserInput() *config {
 }
 
 func transformInput(cfg *config) error {
-	tempOutputPath := getTempFilePath(cfg.inputPath)
+	tempOutputPath := cfg.inputPath + ".tmp"
 
 	// clear any pre-existing output file
 	os.Remove(tempOutputPath)
@@ -131,11 +131,6 @@ func buildRegex(keys []string) (*regexp.Regexp, error) {
 	}
 
 	return regexp.Compile(regexSB.String())
-}
-
-// generate the file path for the temporary file
-func getTempFilePath(filePath string) string {
-	return filePath + ".tmp"
 }
 
 // pretty print tool instructions, then exit the program.
