@@ -44,33 +44,33 @@ func getUserInput() *config {
 }
 
 func transformInput(cfg *config) error {
-	tempOutputPath := cfg.inputPath + ".tmp"
+	tempDstPath := cfg.inputPath + ".tmp"
 
 	// clear any pre-existing output file
-	os.Remove(tempOutputPath)
+	os.Remove(tempDstPath)
 
-	if err := transformInputImpl(cfg.inputPath, tempOutputPath, cfg.keys); err != nil {
+	if err := transformInputImpl(cfg.inputPath, tempDstPath, cfg.keys); err != nil {
 		// clean up after ourselves if there was an error
-		os.Remove(tempOutputPath)
+		os.Remove(tempDstPath)
 		return err
 	}
 
 	if cfg.inplace {
-		return os.Rename(tempOutputPath, cfg.inputPath)
+		return os.Rename(tempDstPath, cfg.inputPath)
 	}
 
 	return nil
 }
 
 // generate a temp file that includes all of `inputPath` except for anything matching `keys`
-func transformInputImpl(inputPath, tempOutputPath string, keys []string) (retErr error) {
+func transformInputImpl(inputPath, tempDstPath string, keys []string) (retErr error) {
 	sourceFile, err := os.Open(inputPath)
 	if err != nil {
 		log.Fatalf("failed opening source file: %v", err)
 	}
 	defer sourceFile.Close()
 
-	outFile, err := os.OpenFile(tempOutputPath, os.O_WRONLY|os.O_CREATE, 0600)
+	outFile, err := os.OpenFile(tempDstPath, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Fatalf("failed creating output file: %v", err)
 	}
