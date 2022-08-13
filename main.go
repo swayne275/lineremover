@@ -29,8 +29,8 @@ type config struct {
 // return true if s matches either the regular expression pattern, or one of the
 // provided substrings
 func (c *config) lineMatches(s string) bool {
-	if c.pattern != nil {
-		return c.pattern.MatchString(s)
+	if c.pattern != nil && c.pattern.MatchString(s) {
+		return true
 	}
 
 	return substrInLine(s, c.keys)
@@ -49,10 +49,6 @@ func getUserInput() *config {
 	}
 	if *keysRaw == "" && *patternRaw == "" {
 		log.Println("keys or pattern must be provided")
-		helpAndExit()
-	}
-	if *keysRaw != "" && *patternRaw != "" {
-		log.Println("keys and pattern are mutually exclusive - both cannot be provided")
 		helpAndExit()
 	}
 
@@ -165,8 +161,7 @@ one of these, it will be removed. Multiple keys may be separated by a '|'.
 Supply the -pattern to match against. If a line in the -file matches the pattern,
 it will be removed. Note that lookarounds are not supported!
 
-This program can either search for substrings, or a pattern, but not both. Note
-that -keys and -pattern are mutually exclusive!
+Note that both -keys and -pattern can be provided at the same time.
 
 Optionally, set -inplace=true to perform the operation in-place (edit
 the provided -file rather than creating a new one).`)
