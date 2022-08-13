@@ -22,25 +22,58 @@ func main() {
 type config struct {
 	inputPath string
 	keys      []string
+	pattern   *regexp.Regexp
 	inplace   bool
+}
+
+// return true if s matches either the regular expression pattern, or one of the
+// provided substrings
+func (c *config) lineMatches(s string) bool {
+	if c.pattern != nil {
+		return c.pattern.MatchString(s)
+	}
+
+	return substrInLine(s, c.keys)
 }
 
 func getUserInput() *config {
 	inputPath := flag.String("file", "", "file to modify")
 	keysRaw := flag.String("keys", "", "keys to search for in lines - separate multiple keys with '|'")
+	patternRaw := flag.String("pattern", "", "regular expression to match against. note that lookarounds are not supported.")
 	inplace := flag.Bool("inplace", false, "edit the file (don't create a copy)")
 	flag.Parse()
 
-	if *inputPath == "" || *keysRaw == "" {
+	if *inputPath == "" {
+		log.Println("file must be provided")
 		helpAndExit()
 	}
-	keys := strings.Split(*keysRaw, "|")
+	if *keysRaw == "" && *patternRaw == "" {
+		log.Println("keys or pattern must be provided")
+		helpAndExit()
+	}
+	if *keysRaw != "" && *patternRaw != "" {
+		log.Println("keys and pattern are mutually exclusive - both cannot be provided")
+		helpAndExit()
+	}
 
-	return &config{
+	c := &config{
 		inputPath: *inputPath,
-		keys:      keys,
 		inplace:   *inplace,
 	}
+	if *keysRaw != "" {
+		c.keys = strings.Split(*keysRaw, "|")
+	}
+	if *patternRaw != "" {
+		re, err := regexp.Compile(*patternRaw)
+		if err != nil {
+			log.Printf("provided pattern %q failed to compile: %v\n", *patternRaw, err)
+			helpAndExit()
+		}
+
+		c.pattern = re
+	}
+
+	return c
 }
 
 func transformInput(cfg *config) error {
@@ -49,7 +82,7 @@ func transformInput(cfg *config) error {
 	// clear any pre-existing output file
 	os.Remove(tempDstPath)
 
-	if err := transformInputImpl(cfg.inputPath, tempDstPath, cfg.keys); err != nil {
+	if err := transformInputImpl(cfg, tempDstPath); err != nil {
 		// clean up after ourselves if there was an error
 		os.Remove(tempDstPath)
 		return err
@@ -63,8 +96,8 @@ func transformInput(cfg *config) error {
 }
 
 // generate a temp file that includes all of `inputPath` except for anything matching `keys`
-func transformInputImpl(inputPath, tempDstPath string, keys []string) (retErr error) {
-	sourceFile, err := os.Open(inputPath)
+func transformInputImpl(cfg *config, tempDstPath string) (retErr error) {
+	sourceFile, err := os.Open(cfg.inputPath)
 	if err != nil {
 		log.Fatalf("failed opening source file: %v", err)
 	}
@@ -91,7 +124,7 @@ func transformInputImpl(inputPath, tempDstPath string, keys []string) (retErr er
 	scanner := bufio.NewScanner(sourceFile)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if !substrInLine(line, keys) {
+		if !cfg.lineMatches(line) {
 			b := strings.Builder{}
 			if !first {
 				b.WriteString("\n")
@@ -109,28 +142,14 @@ func transformInputImpl(inputPath, tempDstPath string, keys []string) (retErr er
 }
 
 // check if any of `keys` are in `line`
-func substrInLine(line string, keys []string) bool {
+func substrInLine(s string, keys []string) bool {
 	for _, key := range keys {
-		if strings.Contains(line, key) {
+		if strings.Contains(s, key) {
 			return true
 		}
 	}
 
 	return false
-}
-
-// note: regex is about 20x slower than simple substring search.
-// decide if I want to have regex support or not
-func buildRegex(keys []string) (*regexp.Regexp, error) {
-	regexSB := strings.Builder{}
-	for _, key := range keys {
-		if regexSB.Len() > 0 {
-			regexSB.WriteRune('|')
-		}
-		regexSB.WriteString(key)
-	}
-
-	return regexp.Compile(regexSB.String())
 }
 
 // pretty print tool instructions, then exit the program.
@@ -142,6 +161,12 @@ Supply a -file to tell the program which file to modify (relative paths work).
 
 Supply the -keys to search for. If a line in the -file contains at least
 one of these, it will be removed. Multiple keys may be separated by a '|'.
+
+Supply the -pattern to match against. If a line in the -file matches the pattern,
+it will be removed. Note that lookarounds are not supported!
+
+This program can either search for substrings, or a pattern, but not both. Note
+that -keys and -pattern are mutually exclusive!
 
 Optionally, set -inplace=true to perform the operation in-place (edit
 the provided -file rather than creating a new one).`)
