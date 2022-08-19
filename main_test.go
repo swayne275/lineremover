@@ -2,40 +2,78 @@ package main
 
 import (
 	"regexp"
-	"strings"
 	"testing"
 )
 
-// note: regex is about 20x slower than simple substring search.
-// decide if I want to have regex support or not
-func buildRegex(keys []string) (*regexp.Regexp, error) {
-	regexSB := strings.Builder{}
-	for _, key := range keys {
-		if regexSB.Len() > 0 {
-			regexSB.WriteRune('|')
+var inputText = []string{
+	"hello world",
+	"hello big world",
+	"hello bright world",
+	"hello small big world",
+}
+
+func BenchmarkSubstringHello(b *testing.B) {
+	cfg := &config{
+		keys: []string{"hello"},
+	}
+	for n := 0; n < b.N; n++ {
+		for _, line := range inputText {
+			cfg.lineMatches(line)
 		}
-		regexSB.WriteString(key)
-	}
-
-	return regexp.Compile(regexSB.String())
-}
-
-func BenchmarkRegex(b *testing.B) {
-	re, err := buildRegex([]string{"hello", "tony", "world"})
-	if err != nil {
-		b.Fatalf("TODO cleanup error compiling regex: %v", err)
-	}
-	testStr := "hello world"
-
-	for n := 0; n < b.N; n++ {
-		re.MatchString(testStr)
 	}
 }
 
-func BenchmarkStringSearch(b *testing.B) {
-	testStr := "hello world"
-	testPhrases := []string{"hello", "tony", "world"}
+func BenchmarkRegexHello(b *testing.B) {
+	cfg := &config{
+		pattern: regexp.MustCompile("hello"),
+	}
 	for n := 0; n < b.N; n++ {
-		substrInLine(testStr, testPhrases)
+		for _, line := range inputText {
+			cfg.lineMatches(line)
+		}
+	}
+}
+
+func BenchmarkSubstringBig(b *testing.B) {
+	cfg := &config{
+		keys: []string{"big"},
+	}
+	for n := 0; n < b.N; n++ {
+		for _, line := range inputText {
+			cfg.lineMatches(line)
+		}
+	}
+}
+
+func BenchmarkRegexBig(b *testing.B) {
+	cfg := &config{
+		pattern: regexp.MustCompile("big"),
+	}
+	for n := 0; n < b.N; n++ {
+		for _, line := range inputText {
+			cfg.lineMatches(line)
+		}
+	}
+}
+
+func BenchmarkSubstringMultiple(b *testing.B) {
+	cfg := &config{
+		keys: []string{"big|brig|bight|bright"},
+	}
+	for n := 0; n < b.N; n++ {
+		for _, line := range inputText {
+			cfg.lineMatches(line)
+		}
+	}
+}
+
+func BenchmarkRegexMultiple(b *testing.B) {
+	cfg := &config{
+		pattern: regexp.MustCompile(".*b([r]?)ig([ht]?).*"),
+	}
+	for n := 0; n < b.N; n++ {
+		for _, line := range inputText {
+			cfg.lineMatches(line)
+		}
 	}
 }
